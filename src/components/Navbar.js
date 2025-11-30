@@ -17,10 +17,6 @@ export default function Navbar() {
           <Link to="/about" style={styles.link}>About</Link>
         </li>
 
-        <li>
-          <Link to="/student-login" style={styles.link}>Login</Link>
-        </li>
-
         <li
           style={styles.dropdown}
           onMouseEnter={() => setOpen(true)}

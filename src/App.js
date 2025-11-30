@@ -6,6 +6,7 @@ import About from "./components/About";
 import Contact from "./components/Contact";
 import Signup from "./components/Signup";
 import FacSignup from "./components/FacSignup";
+import Login from "./components/Login";
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/student-signup" element={<Signup />} />
         <Route path="/faculty-signup" element={<FacSignup />} />
+        <Route path="/Login" element={<Login />} />
       </Routes>
     </Router>
   );
