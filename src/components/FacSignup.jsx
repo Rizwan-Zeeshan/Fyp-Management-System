@@ -173,7 +173,7 @@ export default function FacSignup() {
 
         <p style={styles.linkText}>
           Already have an account?
-          <a href="/Login" style={styles.link}> Login</a>
+          <a href="/FacLogin" style={styles.link}> Login</a>
         </p>
       </div>
     </div>

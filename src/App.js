@@ -7,6 +7,8 @@ import Contact from "./components/Contact";
 import Signup from "./components/Signup";
 import FacSignup from "./components/FacSignup";
 import Login from "./components/Login";
+import FacLogin from "./components/FacLogin";
+import StudentDashboard from "./components/Dashboard1";
 
 function App() {
   return (
@@ -19,7 +21,8 @@ function App() {
         <Route path="/student-signup" element={<Signup />} />
         <Route path="/faculty-signup" element={<FacSignup />} />
         <Route path="/Login" element={<Login />} />
-      </Routes>
+        <Route path="/facLogin" element={<FacLogin />} />
+        <Route path="/Dashboard1" element={<StudentDashboard />} /></Routes>
     </Router>
   );
 }

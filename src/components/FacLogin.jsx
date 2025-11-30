@@ -2,28 +2,31 @@ import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
 
-export default function Login({ initialEmail = "", userType = "student" }) {
-    const [email, setEmail] = useState(initialEmail);
+export default function FacLogin({ initialUserId = "FAC-23", userType = "faculty" }) {
+    const [userId, setUserId] = useState(initialUserId);
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-    const [touched, setTouched] = useState({ email: false, password: false });
+    const [touched, setTouched] = useState({ userId: false, password: false });
 
-    const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const idPrefix = userType === "student" ? "STU" : "FAC";
+    const idRegex = new RegExp(`^${idPrefix}-\\d{2}$`, "i");
+    const userIdIsValid = idRegex.test(userId.trim().toUpperCase());
     const passwordIsValid = password.length >= 6;
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        setTouched({ email: true, password: true });
+        setTouched({ userId: true, password: true });
 
-        if (!emailIsValid || !passwordIsValid) return;
+        if (!userIdIsValid || !passwordIsValid) return;
 
-        const payload = { 
-            email: email.trim(), 
+        const payload = {
+            userId: userId.trim().toUpperCase(),
             password,
-            userType // Add user type to payload
+            userType,
         };
 
         console.log(`${userType} Login submitted:`, payload);
+        // replace with real submit logic (API call)
     };
 
     return (
@@ -33,27 +36,30 @@ export default function Login({ initialEmail = "", userType = "student" }) {
                     {userType === "student" ? "S" : "F"}
                 </div>
                 <h2 style={styles.title}>
-                    {userType === "student" ? "Student" : "Faculty"} Login
+                    Faculty Login
                 </h2>
-                
+
                 <form onSubmit={handleSubmit} style={styles.form} noValidate>
                     <div style={styles.field}>
-                        <label htmlFor="email" style={styles.label}>
-                            Email
+                        <label htmlFor="userId" style={styles.label}>
+                            User ID
                         </label>
                         <input
-                            id="email"
-                            name="email"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+                            id="userId"
+                            name="userId"
+                            type="text"
+                            value={userId}
+                            onChange={(e) => setUserId(e.target.value)}
+                            onBlur={() => setTouched((t) => ({ ...t, userId: true }))}
                             style={styles.input}
                             required
-                            autoComplete="email"
+                            autoComplete="username"
+                            placeholder={`${idPrefix}-23`}
                         />
-                        {touched.email && !emailIsValid && (
-                            <div style={styles.error}>Please enter a valid email address.</div>
+                        {touched.userId && !userIdIsValid && (
+                            <div style={styles.error}>
+                                User ID must match {idPrefix}-NN (e.g. {idPrefix}-23).
+                            </div>
                         )}
                     </div>
 
@@ -89,11 +95,11 @@ export default function Login({ initialEmail = "", userType = "student" }) {
 
                     <button
                         type="submit"
-                        disabled={!emailIsValid || !passwordIsValid}
+                        disabled={!userIdIsValid || !passwordIsValid}
                         style={{
                             ...styles.submit,
-                            opacity: !emailIsValid || !passwordIsValid ? 0.6 : 1,
-                            cursor: !emailIsValid || !passwordIsValid ? "not-allowed" : "pointer",
+                            opacity: !userIdIsValid || !passwordIsValid ? 0.6 : 1,
+                            cursor: !userIdIsValid || !passwordIsValid ? "not-allowed" : "pointer",
                         }}
                     >
                         Sign in
@@ -102,7 +108,7 @@ export default function Login({ initialEmail = "", userType = "student" }) {
                 <p style={styles.linkText}>
                     Don't have an account?
                     <Link
-                        to={userType === "student" ? "/Signup" : "/facSignup"}
+                         to={"/faculty-signup"}
                         style={styles.link}
                     >
                         Sign up
@@ -113,8 +119,8 @@ export default function Login({ initialEmail = "", userType = "student" }) {
     );
 }
 
-Login.propTypes = {
-    initialEmail: PropTypes.string,
+FacLogin.propTypes = {
+    initialUserId: PropTypes.string,
     userType: PropTypes.oneOf(["student", "faculty"]),
 };
 
@@ -187,7 +193,6 @@ const styles = {
         width: "100%",
         boxShadow: "inset 0 1px 3px rgba(66,123,255,0.04), 0 6px 18px rgba(66,123,255,0.04)",
         transition: "box-shadow 0.18s ease, transform 0.06s ease",
-        // subtle focus hint via outline color on browsers that show it
     },
     passwordRow: {
         display: "flex",
