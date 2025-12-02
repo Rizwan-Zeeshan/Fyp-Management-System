@@ -6,19 +6,40 @@ const API_BASE_URL = "http://localhost:8080";
 
 export default function Logout() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState("Logging out...");
+  const [status, setStatus] = useState("Checking session...");
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isAlreadyLoggedOut, setIsAlreadyLoggedOut] = useState(false);
 
   useEffect(() => {
     const performLogout = async () => {
+      const isAuthenticated = localStorage.getItem("isAuthenticated");
+      
+      if (!isAuthenticated || isAuthenticated !== "true") {
+        setIsAlreadyLoggedOut(true);
+        setStatus("You are already logged out!");
+        
+        localStorage.removeItem("isAuthenticated");
+        localStorage.removeItem("userId");
+        localStorage.removeItem("userRole");
+        return;
+      }
+
       try {
-        await axios.post(
-          `${API_BASE_URL}/auth/me`,
-          {},
-          {
-            withCredentials: true,
-          }
-        );
+        await axios.get(`${API_BASE_URL}/student/status`, {
+          withCredentials: true,
+        });
+
+        setStatus("Logging out...");
+        
+        try {
+          await axios.post(
+            `${API_BASE_URL}/auth/logout`,
+            {},
+            {
+              withCredentials: true,
+            }
+          );
+        } catch (logoutErr) {}
 
         localStorage.removeItem("isAuthenticated");
         localStorage.removeItem("userId");
@@ -31,18 +52,25 @@ export default function Logout() {
           navigate("/");
         }, 2000);
       } catch (error) {
-        console.error("Logout error:", error);
-        
-        localStorage.removeItem("isAuthenticated");
-        localStorage.removeItem("userId");
-        localStorage.removeItem("userRole");
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+          setIsAlreadyLoggedOut(true);
+          setStatus("You are already logged out!");
+          
+          localStorage.removeItem("isAuthenticated");
+          localStorage.removeItem("userId");
+          localStorage.removeItem("userRole");
+        } else {
+          localStorage.removeItem("isAuthenticated");
+          localStorage.removeItem("userId");
+          localStorage.removeItem("userRole");
 
-        setIsSuccess(true);
-        setStatus("Logged out successfully!");
+          setIsSuccess(true);
+          setStatus("Logged out successfully!");
 
-        setTimeout(() => {
-          navigate("/");
-        }, 2000);
+          setTimeout(() => {
+            navigate("/");
+          }, 2000);
+        }
       }
     };
 
@@ -51,22 +79,26 @@ export default function Logout() {
 
   return (
     <div style={styles.container}>
-      {/* Background decorations */}
       <div style={styles.bgDecor1}></div>
       <div style={styles.bgDecor2}></div>
       <div style={styles.bgDecor3}></div>
 
       <div style={styles.card}>
-        {/* Animated icon */}
         <div style={{
           ...styles.iconWrapper,
           background: isSuccess 
             ? 'linear-gradient(135deg, #10b981, #34d399)' 
+            : isAlreadyLoggedOut
+            ? 'linear-gradient(135deg, #f59e0b, #fbbf24)'
             : 'linear-gradient(135deg, #6366f1, #8b5cf6)'
         }}>
           {isSuccess ? (
             <svg viewBox="0 0 24 24" width="40" height="40" fill="white">
               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+            </svg>
+          ) : isAlreadyLoggedOut ? (
+            <svg viewBox="0 0 24 24" width="40" height="40" fill="white">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
             </svg>
           ) : (
             <svg viewBox="0 0 24 24" width="40" height="40" fill="white">
@@ -75,26 +107,52 @@ export default function Logout() {
           )}
         </div>
 
-        {/* Status text */}
         <h2 style={styles.title}>{status}</h2>
         <p style={styles.subtitle}>
-          {isSuccess ? "Redirecting you to home page..." : "Please wait a moment..."}
+          {isSuccess 
+            ? "Redirecting you to home page..." 
+            : isAlreadyLoggedOut 
+            ? "Please login first to access the system."
+            : "Please wait a moment..."}
         </p>
 
-        {/* Progress bar */}
-        <div style={styles.progressContainer}>
-          <div style={{
-            ...styles.progressBar,
-            animation: 'progressAnimation 2s ease-in-out forwards'
-          }}></div>
-        </div>
+        {!isAlreadyLoggedOut && (
+          <div style={styles.progressContainer}>
+            <div style={{
+              ...styles.progressBar,
+              animation: 'progressAnimation 2s ease-in-out forwards'
+            }}></div>
+          </div>
+        )}
 
-        {/* Decorative dots */}
-        <div style={styles.dotsContainer}>
-          <span style={{...styles.dot, animationDelay: '0s'}}></span>
-          <span style={{...styles.dot, animationDelay: '0.2s'}}></span>
-          <span style={{...styles.dot, animationDelay: '0.4s'}}></span>
-        </div>
+        {isAlreadyLoggedOut && (
+          <div style={styles.buttonContainer}>
+            <button 
+              style={styles.loginBtn}
+              onClick={() => navigate('/Login')}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              Go to Login
+            </button>
+            <button 
+              style={styles.homeBtn}
+              onClick={() => navigate('/')}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(99, 102, 241, 0.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            >
+              Back to Home
+            </button>
+          </div>
+        )}
+
+        {!isAlreadyLoggedOut && (
+          <div style={styles.dotsContainer}>
+            <span style={{...styles.dot, animationDelay: '0s'}}></span>
+            <span style={{...styles.dot, animationDelay: '0.2s'}}></span>
+            <span style={{...styles.dot, animationDelay: '0.4s'}}></span>
+          </div>
+        )}
       </div>
 
       <style>{`
@@ -231,5 +289,34 @@ const styles = {
     background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
     animation: "bounce 1.4s ease-in-out infinite",
     display: "inline-block",
+  },
+  buttonContainer: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+    marginTop: "10px",
+  },
+  loginBtn: {
+    padding: "14px 32px",
+    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+    border: "none",
+    borderRadius: "12px",
+    color: "white",
+    fontSize: "1rem",
+    fontWeight: 600,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    boxShadow: "0 8px 20px rgba(99, 102, 241, 0.3)",
+  },
+  homeBtn: {
+    padding: "12px 32px",
+    background: "transparent",
+    border: "2px solid #6366f1",
+    borderRadius: "12px",
+    color: "#6366f1",
+    fontSize: "0.95rem",
+    fontWeight: 600,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
   },
 };
