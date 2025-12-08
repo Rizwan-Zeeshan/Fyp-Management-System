@@ -11,6 +11,7 @@ export default function UpDocument() {
   const [uploadSuccess, setUploadSuccess] = useState({});
   const [error, setError] = useState("");
   const [dragOver, setDragOver] = useState(null);
+  const [deadlines, setDeadlines] = useState({});
 
   const proposalRef = useRef(null);
   const designRef = useRef(null);
@@ -19,7 +20,7 @@ export default function UpDocument() {
 
   const documentTypes = [
     {
-      id: "proposal",
+      id: "Proposal",
       title: "Proposal",
       description: "Submit your project proposal document",
       ref: proposalRef,
@@ -29,27 +30,27 @@ export default function UpDocument() {
       icon: "📋",
     },
     {
-      id: "design_document",
+      id: "Design Document",
       title: "Design Document",
       description: "Upload your system design & architecture",
       ref: designRef,
-      canSubmit: studentStatus?.design_document,
+      canSubmit: studentStatus?.designDocument,
       gradient: "linear-gradient(135deg, #ec4899, #f472b6)",
       shadowColor: "rgba(236, 72, 153, 0.4)",
       icon: "🎨",
     },
     {
-      id: "test_document",
+      id: "Test Document",
       title: "Test Document",
       description: "Submit your testing documentation",
       ref: testRef,
-      canSubmit: studentStatus?.test_document,
+      canSubmit: studentStatus?.testDocument,
       gradient: "linear-gradient(135deg, #14b8a6, #06b6d4)",
       shadowColor: "rgba(20, 184, 166, 0.4)",
       icon: "🧪",
     },
     {
-      id: "thesis",
+      id: "Thesis",
       title: "Thesis",
       description: "Upload your final thesis document",
       ref: thesisRef,
@@ -62,7 +63,47 @@ export default function UpDocument() {
 
   useEffect(() => {
     fetchStudentStatus();
+    fetchDeadlines();
   }, []);
+
+  const fetchDeadlines = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/student/deadlines`, {
+        withCredentials: true,
+      });
+      // Convert array to object keyed by doc_type
+      const deadlineMap = {};
+      (response.data || []).forEach(d => {
+        deadlineMap[d.doc_type] = d.deadline_date;
+      });
+      setDeadlines(deadlineMap);
+    } catch (err) {
+      console.error("Error fetching deadlines:", err);
+    }
+  };
+
+  const isDeadlinePassed = (docType) => {
+    const deadline = deadlines[docType];
+    if (!deadline) return false; // No deadline set, allow upload
+    const deadlineDate = new Date(deadline);
+    deadlineDate.setHours(23, 59, 59, 999); // End of the deadline day
+    const today = new Date();
+    return today > deadlineDate;
+  };
+
+  const getDeadlineInfo = (docType) => {
+    const deadline = deadlines[docType];
+    if (!deadline) return null;
+    const deadlineDate = new Date(deadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysLeft = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
+    return {
+      date: deadlineDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      daysLeft,
+      isPassed: daysLeft < 0
+    };
+  };
 
   const fetchStudentStatus = async () => {
     try {
@@ -81,6 +122,12 @@ export default function UpDocument() {
 
   const handleUpload = async (docType, file) => {
     if (!file) return;
+
+    // Check if deadline has passed
+    if (isDeadlinePassed(docType)) {
+      setError(`Cannot upload ${docType}. The deadline has passed.`);
+      return;
+    }
 
     setUploadingDoc(docType);
     setError("");
@@ -210,18 +257,20 @@ export default function UpDocument() {
             const isUploaded = supervisorAssigned && (!doc.canSubmit || uploadSuccess[doc.id]);
             const isUploading = uploadingDoc === doc.id;
             const isDraggedOver = dragOver === doc.id;
+            const deadlineInfo = getDeadlineInfo(doc.id);
+            const isDeadlineExpired = isDeadlinePassed(doc.id);
 
             return (
               <div
                 key={doc.id}
                 style={{
                   ...styles.card,
-                  ...(isDraggedOver && !isBlocked ? styles.cardDragOver : {}),
-                  ...(isBlocked ? styles.cardBlocked : {}),
+                  ...(isDraggedOver && !isBlocked && !isDeadlineExpired ? styles.cardDragOver : {}),
+                  ...(isBlocked || isDeadlineExpired ? styles.cardBlocked : {}),
                 }}
                 onDragOver={(e) => handleDragOver(e, doc.id)}
                 onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, doc)}
+                onDrop={(e) => !isDeadlineExpired && handleDrop(e, doc)}
               >
                 {/* Card Glow Effect */}
                 <div style={{...styles.cardGlow, background: doc.gradient, opacity: isDraggedOver ? 0.3 : 0}}></div>
@@ -245,6 +294,15 @@ export default function UpDocument() {
                   </div>
                 )}
 
+                {isDeadlineExpired && !isBlocked && (
+                  <div style={{...styles.blockedRibbon, background: 'linear-gradient(135deg, #ef4444, #dc2626)'}}>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                      <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                    </svg>
+                    Deadline Passed
+                  </div>
+                )}
+
                 {/* Icon Section */}
                 <div style={{...styles.iconWrapper, background: doc.gradient, boxShadow: `0 15px 40px ${doc.shadowColor}`}}>
                   <span style={styles.iconEmoji}>{doc.icon}</span>
@@ -261,6 +319,34 @@ export default function UpDocument() {
                   </svg>
                   <span>PDF, DOC, DOCX</span>
                 </div>
+
+                {/* Deadline Info */}
+                {deadlineInfo && (
+                  <div style={{
+                    ...styles.deadlineInfo,
+                    background: deadlineInfo.isPassed 
+                      ? 'rgba(239, 68, 68, 0.15)' 
+                      : deadlineInfo.daysLeft <= 7 
+                        ? 'rgba(245, 158, 11, 0.15)' 
+                        : 'rgba(16, 185, 129, 0.15)',
+                    color: deadlineInfo.isPassed 
+                      ? '#ef4444' 
+                      : deadlineInfo.daysLeft <= 7 
+                        ? '#f59e0b' 
+                        : '#10b981'
+                  }}>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                      <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                    </svg>
+                    <span>
+                      {deadlineInfo.isPassed 
+                        ? `Deadline passed (${deadlineInfo.date})`
+                        : deadlineInfo.daysLeft === 0 
+                          ? `Due today!` 
+                          : `Due: ${deadlineInfo.date} (${deadlineInfo.daysLeft} days left)`}
+                    </span>
+                  </div>
+                )}
 
                 {/* Hidden File Input */}
                 <input
@@ -279,17 +365,24 @@ export default function UpDocument() {
                 <button
                   style={{
                     ...styles.uploadButton,
-                    background: isBlocked || isUploaded ? 'rgba(148, 163, 184, 0.5)' : doc.gradient,
-                    boxShadow: isBlocked || isUploaded ? 'none' : `0 10px 30px ${doc.shadowColor}`,
-                    cursor: isBlocked || isUploaded || isUploading ? 'not-allowed' : 'pointer',
+                    background: isBlocked || isUploaded || isDeadlineExpired ? 'rgba(148, 163, 184, 0.5)' : doc.gradient,
+                    boxShadow: isBlocked || isUploaded || isDeadlineExpired ? 'none' : `0 10px 30px ${doc.shadowColor}`,
+                    cursor: isBlocked || isUploaded || isUploading || isDeadlineExpired ? 'not-allowed' : 'pointer',
                   }}
-                  disabled={isBlocked || isUploaded || isUploading}
+                  disabled={isBlocked || isUploaded || isUploading || isDeadlineExpired}
                   onClick={() => triggerFileInput(doc.ref)}
                 >
                   {isUploading ? (
                     <>
                       <div style={styles.buttonSpinner}></div>
                       Uploading...
+                    </>
+                  ) : isDeadlineExpired ? (
+                    <>
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z" />
+                      </svg>
+                      Deadline Passed
                     </>
                   ) : isUploaded ? (
                     <>
@@ -309,7 +402,7 @@ export default function UpDocument() {
                 </button>
 
                 {/* Drag & Drop hint */}
-                {!isBlocked && !isUploaded && (
+                {!isBlocked && !isUploaded && !isDeadlineExpired && (
                   <p style={styles.dragHint}>or drag and drop file here</p>
                 )}
               </div>
@@ -590,6 +683,16 @@ const styles = {
     borderRadius: "50px",
     color: "rgba(255, 255, 255, 0.6)",
     fontSize: "0.8rem",
+    marginBottom: "12px",
+  },
+  deadlineInfo: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "6px 14px",
+    borderRadius: "50px",
+    fontSize: "0.8rem",
+    fontWeight: 500,
     marginBottom: "20px",
   },
   uploadButton: {

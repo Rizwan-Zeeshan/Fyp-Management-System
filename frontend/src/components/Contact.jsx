@@ -1,23 +1,85 @@
 import React, { useState } from "react";
+import emailjs from '@emailjs/browser';
+
+// Initialize EmailJS with your public key
+emailjs.init("edX_UnuU6Zucih02o");
 
 export function Contact() {
-  const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    email: '', 
+    subject: '', 
+    message: '' 
+  });
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 3000);
-    setFormData({ name: '', email: '', subject: '', message: '' });
+    setError('');
+    
+    // Validation
+    if (!formData.name.trim() || !formData.email.trim() || 
+        !formData.subject.trim() || !formData.message.trim()) {
+      setError('All fields are required');
+      return;
+    }
+    
+    if (!validateEmail(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    
+    setLoading(true);
+
+    try {
+      const response = await emailjs.send(
+        'service_kjgur4p', // Your Service ID
+        'template_cb9g4rg', // Your Template ID
+        {
+          from_name: formData.name,
+          from_email: formData.email,
+          subject: formData.subject,
+          message: formData.message,
+          to_email: "rizwanshafique4321@gmail.com", // Admin email
+        }
+      );
+
+      console.log('Email sent successfully:', response);
+      
+      setSubmitted(true);
+      setFormData({ name: '', email: '', subject: '', message: '' });
+      
+      // Hide success message after 5 seconds
+      setTimeout(() => setSubmitted(false), 5000);
+      
+    } catch (err) {
+      console.error('Email send error:', err);
+      
+      // More specific error messages
+      if (err.text) {
+        setError(`Failed to send message: ${err.text}`);
+      } else {
+        setError('Failed to send message. Please check your connection and try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const contactInfo = [
-    { icon: '📧', label: 'Email', value: 'Nova@trinova.edu', color: '#6366f1' },
-    { icon: '📞', label: 'Phone', value: '+92 333-1234567', color: '#06b6d4' },
+    { icon: '📧', label: 'Email', value: 'Rizwan@trinova.com', color: '#6366f1' },
+    { icon: '📞', label: 'Phone', value: '+92 333-1332333', color: '#06b6d4' },
     { icon: '📍', label: 'Address', value: 'University of Engineering and Technology, Lahore', color: '#10b981' },
     { icon: '🕐', label: 'Hours', value: 'Mon - Fri: 9AM - 5PM', color: '#f59e0b' },
   ];
@@ -57,12 +119,17 @@ export function Contact() {
               ))}
             </div>
 
-            {/* Social Links */}
             <div style={styles.socialSection}>
               <h4 style={styles.socialTitle}>Follow Us</h4>
               <div style={styles.socialLinks}>
                 {['facebook', 'twitter', 'linkedin', 'github'].map((social) => (
-                  <a key={social} href="https://github.com/Rizwan-Zeeshan" style={styles.socialLink}>
+                  <a 
+                    key={social} 
+                    href="https://github.com/Rizwan-Zeeshan" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    style={styles.socialLink}
+                  >
                     {social === 'facebook' && <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>}
                     {social === 'twitter' && <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></svg>}
                     {social === 'linkedin' && <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2zM4 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>}
@@ -82,7 +149,16 @@ export function Contact() {
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                   <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
                 </svg>
-                Message sent successfully!
+                Message sent successfully to admin!
+              </div>
+            )}
+
+            {error && (
+              <div style={styles.errorMsg}>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                {error}
               </div>
             )}
 
@@ -140,11 +216,28 @@ export function Contact() {
                 />
               </div>
 
-              <button type="submit" style={styles.submitBtn}>
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                </svg>
-                Send Message
+              <button 
+                type="submit" 
+                style={{
+                  ...styles.submitBtn,
+                  opacity: loading ? 0.7 : 1,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                }} 
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <span style={styles.spinner}></span>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                      <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                    Send Message
+                  </>
+                )}
               </button>
             </form>
           </div>
@@ -152,7 +245,18 @@ export function Contact() {
       </div>
 
       <style>{`
-        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        @keyframes float { 
+          0%, 100% { transform: translateY(0); } 
+          50% { transform: translateY(-20px); } 
+        }
+        @keyframes spin { 
+          0% { transform: rotate(0deg); } 
+          100% { transform: rotate(360deg); } 
+        }
+        input:focus, textarea:focus {
+          border-color: #6366f1 !important;
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
+        }
       `}</style>
     </div>
   );
@@ -250,6 +354,11 @@ const styles = {
     background: 'rgba(255,255,255,0.05)',
     borderRadius: '14px',
     transition: 'all 0.3s ease',
+    cursor: 'pointer',
+  },
+  infoCardHover: {
+    background: 'rgba(255,255,255,0.08)',
+    transform: 'translateY(-2px)',
   },
   infoIcon: {
     width: '50px',
@@ -301,6 +410,11 @@ const styles = {
     textDecoration: 'none',
     transition: 'all 0.3s ease',
   },
+  socialLinkHover: {
+    background: 'rgba(255,255,255,0.15)',
+    color: 'white',
+    transform: 'translateY(-2px)',
+  },
   formSection: {
     background: 'rgba(255,255,255,0.05)',
     borderRadius: '24px',
@@ -319,6 +433,29 @@ const styles = {
     fontSize: '0.95rem',
     fontWeight: 500,
     marginBottom: '20px',
+  },
+  errorMsg: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '14px 20px',
+    background: 'rgba(239, 68, 68, 0.15)',
+    border: '1px solid rgba(239, 68, 68, 0.3)',
+    borderRadius: '12px',
+    color: '#ef4444',
+    fontSize: '0.95rem',
+    fontWeight: 500,
+    marginBottom: '20px',
+  },
+  spinner: {
+    width: '18px',
+    height: '18px',
+    border: '2px solid rgba(255,255,255,0.3)',
+    borderTopColor: 'white',
+    borderRadius: '50%',
+    animation: 'spin 0.8s linear infinite',
+    display: 'inline-block',
+    marginRight: '8px',
   },
   form: {
     display: 'flex',
@@ -361,6 +498,7 @@ const styles = {
     resize: 'vertical',
     fontFamily: 'inherit',
     transition: 'all 0.3s ease',
+    minHeight: '120px',
   },
   submitBtn: {
     display: 'flex',
@@ -378,6 +516,10 @@ const styles = {
     boxShadow: '0 10px 30px rgba(99, 102, 241, 0.4)',
     transition: 'all 0.3s ease',
     marginTop: '8px',
+  },
+  submitBtnHover: {
+    transform: 'translateY(-2px)',
+    boxShadow: '0 15px 35px rgba(99, 102, 241, 0.5)',
   },
 };
 

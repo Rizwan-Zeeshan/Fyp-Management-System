@@ -51,11 +51,11 @@ export default function FacSignup() {
       );
 
       setIsSuccess(true);
-      setMessage(`Signup successful! Your Faculty ID is: ${response.data.id}. Redirecting to login...`);
+      setMessage(`Signup successful! Your Faculty ID is: ${response.data.id}. Please log in.`);
       setForm({ name: "", email: "", password: "", address: "", status: "" });
 
       setTimeout(() => {
-        navigate("/faculty-login");
+        navigate("");
       }, 2500);
     } catch (error) {
       if (error.response) {
@@ -192,9 +192,9 @@ export default function FacSignup() {
                   required
                 >
                   <option value="">Select your role</option>
-                  <option value="Professor">Supervisor</option>
-                  <option value="Assistant Professor">Evaluation Committee Member</option>
-                  <option value="Lecturer">FYP Committee Member</option>
+                  <option value="Supervisor">Supervisor</option>
+                  <option value="Evaluation Committee Member">Evaluation Committee Member</option>
+                  <option value="FYP Committee Member">FYP Committee Member</option>
                 </select>
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style={styles.selectArrow}>
                   <path d="M7 10l5 5 5-5z"/>

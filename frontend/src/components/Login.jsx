@@ -13,6 +13,8 @@ export default function Login({ initialUserId = "", userType = "student" }) {
   const [touched, setTouched] = useState({ userId: false, password: false });
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [focusedField, setFocusedField] = useState(null);
+  const [hoveredBtn, setHoveredBtn] = useState(false);
 
   const idPrefix = userType === "student" ? "STU" : "FAC";
   const idRegex = new RegExp(`^${idPrefix}-\\d+$`, "i");
@@ -45,8 +47,27 @@ export default function Login({ initialUserId = "", userType = "student" }) {
       localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("userId", userId.trim().toUpperCase());
       localStorage.setItem("userRole", role);
-      console.log("Login successful:", message);
-      navigate("/Dashboard1");
+      
+      window.dispatchEvent(new Event("loginStatusChanged"));
+      
+      console.log("Login successful:", message, "Role:", role);
+      
+      // Redirect based on role/status
+      const roleLower = role ? role.toLowerCase() : '';
+      if (roleLower === 'student') {
+        navigate("/Dashboard1");
+      } else if (roleLower === 'faculty' || roleLower === 'supervisor') {
+        navigate("/Dashboard2");
+      } else if (roleLower === 'evaluation committee member') {
+        navigate("/Dashboard3");
+      } else if (roleLower === 'fyp committee member') {
+        navigate("/Dashboard4");
+      } else if (roleLower === 'admin') {
+        navigate("/Dashboard5");
+      } else {
+        // Default to student dashboard
+        navigate("/Dashboard1");
+      }
     } catch (error) {
       if (error.response) {
         setErrorMessage(error.response.data.message || "Invalid credentials. Please try again.");
@@ -62,50 +83,84 @@ export default function Login({ initialUserId = "", userType = "student" }) {
 
   return (
     <div style={styles.container}>
-      <div style={styles.bgOrb1}></div>
-      <div style={styles.bgOrb2}></div>
+      {/* Animated Background */}
+      <div style={styles.bgContainer}>
+        <div style={styles.bgOrb1}></div>
+        <div style={styles.bgOrb2}></div>
+        <div style={styles.bgOrb3}></div>
+        <div style={styles.bgGrid}></div>
+        <div style={styles.particles}>
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="particle"
+              style={{
+                ...styles.particle,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 5}s`,
+                animationDuration: `${4 + Math.random() * 4}s`,
+              }}
+            ></div>
+          ))}
+        </div>
+      </div>
 
       <div style={styles.card}>
+        {/* Card glow effect */}
+        <div style={styles.cardGlow}></div>
+        
         <div style={styles.cardInner}>
-          <div style={styles.iconWrapper}>
-            <svg viewBox="0 0 24 24" width="32" height="32" fill="white">
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-            </svg>
+          {/* Icon with animated ring */}
+          <div style={styles.iconContainer}>
+            <div style={styles.iconRing}></div>
+            <div style={styles.iconWrapper}>
+              <svg viewBox="0 0 24 24" width="32" height="32" fill="white">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+            </div>
           </div>
 
-          <h2 style={styles.title}>Welcome Back</h2>
-          <p style={styles.subtitle}>Sign in to your student account</p>
+          <h2 style={styles.title}>
+            <span style={styles.titleGradient}>Welcome Back</span>
+          </h2>
+          <p style={styles.subtitle}>
+            <span style={styles.sparkle}>✨</span>
+            Sign in to your student account
+          </p>
 
           <form onSubmit={handleSubmit} style={styles.form} noValidate>
             <div style={styles.field}>
               <label htmlFor="userId" style={styles.label}>
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style={{ marginRight: 8 }}>
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
-                </svg>
+                <span style={styles.labelIcon}>👤</span>
                 Student ID
               </label>
-              <div style={styles.inputWrapper}>
+              <div style={{
+                ...styles.inputWrapper,
+                ...(focusedField === 'userId' ? styles.inputWrapperFocused : {}),
+                ...(touched.userId && !userIdIsValid ? styles.inputWrapperError : {}),
+              }}>
                 <input
                   id="userId"
                   name="userId"
                   type="text"
                   value={userId}
                   onChange={(e) => setUserId(e.target.value)}
-                  onBlur={() => setTouched((t) => ({ ...t, userId: true }))}
-                  style={{
-                    ...styles.input,
-                    borderColor: touched.userId && !userIdIsValid ? '#ef4444' : 'rgba(255,255,255,0.15)',
+                  onFocus={() => setFocusedField('userId')}
+                  onBlur={() => {
+                    setFocusedField(null);
+                    setTouched((t) => ({ ...t, userId: true }));
                   }}
+                  style={styles.input}
                   required
                   autoComplete="username"
                   placeholder="STU-01"
                 />
+                <div style={styles.inputGlow}></div>
               </div>
               {touched.userId && !userIdIsValid && (
                 <div style={styles.error}>
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-                  </svg>
+                  <span style={styles.errorIcon}>⚠️</span>
                   User ID must match STU-NN format (e.g. STU-09)
                 </div>
               )}
@@ -113,24 +168,26 @@ export default function Login({ initialUserId = "", userType = "student" }) {
 
             <div style={styles.field}>
               <label htmlFor="password" style={styles.label}>
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style={{ marginRight: 8 }}>
-                  <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-                </svg>
+                <span style={styles.labelIcon}>🔒</span>
                 Password
               </label>
-              <div style={styles.passwordWrapper}>
+              <div style={{
+                ...styles.inputWrapper,
+                ...(focusedField === 'password' ? styles.inputWrapperFocused : {}),
+                ...(touched.password && !passwordIsValid ? styles.inputWrapperError : {}),
+              }}>
                 <input
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  onBlur={() => setTouched((t) => ({ ...t, password: true }))}
-                  style={{
-                    ...styles.input,
-                    ...styles.passwordInput,
-                    borderColor: touched.password && !passwordIsValid ? '#ef4444' : 'rgba(255,255,255,0.15)',
+                  onFocus={() => setFocusedField('password')}
+                  onBlur={() => {
+                    setFocusedField(null);
+                    setTouched((t) => ({ ...t, password: true }));
                   }}
+                  style={{...styles.input, paddingRight: 50}}
                   required
                   autoComplete="current-password"
                   placeholder="••••••••"
@@ -141,22 +198,13 @@ export default function Login({ initialUserId = "", userType = "student" }) {
                   style={styles.toggleBtn}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? (
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                      <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>
-                    </svg>
-                  ) : (
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-                    </svg>
-                  )}
+                  {showPassword ? "🙈" : "👁️"}
                 </button>
+                <div style={styles.inputGlow}></div>
               </div>
               {touched.password && !passwordIsValid && (
                 <div style={styles.error}>
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-                  </svg>
+                  <span style={styles.errorIcon}>⚠️</span>
                   Password must be at least 6 characters
                 </div>
               )}
@@ -164,9 +212,7 @@ export default function Login({ initialUserId = "", userType = "student" }) {
 
             {errorMessage && (
               <div style={styles.errorBox}>
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-                </svg>
+                <span style={styles.errorBoxIcon}>❌</span>
                 {errorMessage}
               </div>
             )}
@@ -174,10 +220,18 @@ export default function Login({ initialUserId = "", userType = "student" }) {
             <button
               type="submit"
               disabled={!userIdIsValid || !passwordIsValid || loading}
+              onMouseEnter={() => setHoveredBtn(true)}
+              onMouseLeave={() => setHoveredBtn(false)}
               style={{
                 ...styles.submit,
                 opacity: !userIdIsValid || !passwordIsValid || loading ? 0.6 : 1,
                 cursor: !userIdIsValid || !passwordIsValid || loading ? "not-allowed" : "pointer",
+                transform: hoveredBtn && userIdIsValid && passwordIsValid && !loading 
+                  ? 'translateY(-3px) scale(1.02)' 
+                  : 'translateY(0)',
+                boxShadow: hoveredBtn && userIdIsValid && passwordIsValid && !loading
+                  ? '0 20px 40px rgba(99,102,241,0.5), 0 0 0 3px rgba(99,102,241,0.2)'
+                  : '0 10px 30px rgba(99, 102, 241, 0.4)',
               }}
             >
               {loading ? (
@@ -187,10 +241,9 @@ export default function Login({ initialUserId = "", userType = "student" }) {
                 </>
               ) : (
                 <>
+                  <span style={styles.btnIcon}>🚀</span>
                   Sign In
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                    <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z"/>
-                  </svg>
+                  <span style={styles.btnArrow}>→</span>
                 </>
               )}
             </button>
@@ -205,15 +258,87 @@ export default function Login({ initialUserId = "", userType = "student" }) {
           <p style={styles.linkText}>
             Don't have an account?{" "}
             <Link to="/student-signup" style={styles.link}>
-              Create Account
+              <span style={styles.linkHighlight}>Create Account</span>
+              <span style={styles.linkIcon}>✨</span>
             </Link>
           </p>
+
+          {/* Security badge */}
+          <div style={styles.securityBadge}>
+            <span style={styles.securityIcon}>🔐</span>
+            <span style={styles.securityText}>Secured with 256-bit encryption</span>
+          </div>
         </div>
       </div>
 
       <style>{`
-        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+        
+        @keyframes float { 
+          0%, 100% { transform: translateY(0) rotate(0deg); } 
+          50% { transform: translateY(-25px) rotate(3deg); } 
+        }
+        
+        @keyframes spin { 
+          0% { transform: rotate(0deg); } 
+          100% { transform: rotate(360deg); } 
+        }
+        
+        @keyframes pulse {
+          0%, 100% { opacity: 0.5; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        
+        @keyframes ringRotate {
+          0% { transform: translate(-50%, -50%) rotate(0deg); }
+          100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        
+        @keyframes particleFloat {
+          0%, 100% { 
+            transform: translateY(0) translateX(0) scale(1);
+            opacity: 0.4;
+          }
+          25% {
+            transform: translateY(-20px) translateX(10px) scale(1.1);
+            opacity: 0.7;
+          }
+          50% { 
+            transform: translateY(-40px) translateX(-5px) scale(0.9);
+            opacity: 0.3;
+          }
+          75% {
+            transform: translateY(-20px) translateX(-10px) scale(1.05);
+            opacity: 0.5;
+          }
+        }
+        
+        @keyframes glow {
+          0%, 100% { box-shadow: 0 0 30px rgba(99, 102, 241, 0.3); }
+          50% { box-shadow: 0 0 50px rgba(139, 92, 246, 0.5); }
+        }
+        
+        @keyframes sparkle {
+          0%, 100% { transform: scale(1) rotate(0deg); }
+          50% { transform: scale(1.2) rotate(10deg); }
+        }
+        
+        .particle {
+          animation: particleFloat 5s ease-in-out infinite;
+        }
+        
+        input::placeholder {
+          color: rgba(255, 255, 255, 0.3);
+        }
+        
+        input:focus {
+          outline: none;
+        }
       `}</style>
     </div>
   );
@@ -231,73 +356,169 @@ const styles = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+    background: "linear-gradient(135deg, #0a0a1a 0%, #1a103d 40%, #0f172a 100%)",
     padding: 20,
     position: "relative",
     overflow: "hidden",
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontFamily: "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  },
+  bgContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: "hidden",
   },
   bgOrb1: {
     position: "absolute",
     top: "-150px",
     right: "-100px",
-    width: "400px",
-    height: "400px",
+    width: "500px",
+    height: "500px",
     borderRadius: "50%",
-    background: "radial-gradient(circle, rgba(99,102,241,0.25), transparent 70%)",
-    animation: "float 6s ease-in-out infinite",
+    background: "radial-gradient(circle, rgba(99,102,241,0.3), transparent 60%)",
+    animation: "float 8s ease-in-out infinite",
+    filter: "blur(40px)",
   },
   bgOrb2: {
     position: "absolute",
     bottom: "-150px",
     left: "-100px",
-    width: "450px",
-    height: "450px",
+    width: "550px",
+    height: "550px",
     borderRadius: "50%",
-    background: "radial-gradient(circle, rgba(6,182,212,0.2), transparent 70%)",
-    animation: "float 8s ease-in-out infinite reverse",
+    background: "radial-gradient(circle, rgba(6,182,212,0.25), transparent 60%)",
+    animation: "float 10s ease-in-out infinite reverse",
+    filter: "blur(50px)",
+  },
+  bgOrb3: {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    width: "400px",
+    height: "400px",
+    borderRadius: "50%",
+    background: "radial-gradient(circle, rgba(236,72,153,0.15), transparent 60%)",
+    animation: "float 7s ease-in-out infinite",
+    filter: "blur(35px)",
+    transform: "translate(-50%, -50%)",
+  },
+  bgGrid: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundImage: `
+      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px)
+    `,
+    backgroundSize: "50px 50px",
+  },
+  particles: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  particle: {
+    position: "absolute",
+    width: "6px",
+    height: "6px",
+    borderRadius: "50%",
+    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+    boxShadow: "0 0 10px rgba(99, 102, 241, 0.5)",
   },
   card: {
     width: "100%",
-    maxWidth: 420,
-    background: "rgba(255, 255, 255, 0.05)",
+    maxWidth: 440,
+    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03))",
     backdropFilter: "blur(20px)",
-    borderRadius: 24,
-    border: "1px solid rgba(255, 255, 255, 0.1)",
-    boxShadow: "0 25px 50px rgba(0, 0, 0, 0.3)",
+    borderRadius: 28,
+    border: "1px solid rgba(255, 255, 255, 0.12)",
+    boxShadow: "0 25px 60px rgba(0, 0, 0, 0.4)",
     position: "relative",
     zIndex: 10,
+    overflow: "hidden",
+  },
+  cardGlow: {
+    position: "absolute",
+    top: "-2px",
+    left: "-2px",
+    right: "-2px",
+    bottom: "-2px",
+    borderRadius: 30,
+    background: "linear-gradient(135deg, rgba(99,102,241,0.3), rgba(139,92,246,0.2), rgba(6,182,212,0.3))",
+    filter: "blur(15px)",
+    zIndex: -1,
+    animation: "glow 4s ease-in-out infinite",
   },
   cardInner: {
-    padding: "48px 40px 40px",
+    padding: "50px 45px 45px",
     textAlign: "center",
   },
+  iconContainer: {
+    position: "relative",
+    width: 90,
+    height: 90,
+    margin: "0 auto 28px",
+  },
+  iconRing: {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    width: "100%",
+    height: "100%",
+    borderRadius: "50%",
+    border: "2px dashed rgba(99, 102, 241, 0.4)",
+    animation: "ringRotate 10s linear infinite",
+  },
   iconWrapper: {
-    width: 70,
-    height: 70,
-    borderRadius: 20,
-    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    width: 75,
+    height: 75,
+    borderRadius: 22,
+    background: "linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    margin: "0 auto 24px",
-    boxShadow: "0 15px 35px rgba(99, 102, 241, 0.4)",
+    boxShadow: "0 15px 40px rgba(99, 102, 241, 0.5)",
   },
   title: {
-    fontSize: "1.75rem",
-    fontWeight: 700,
-    color: "white",
     marginBottom: 8,
   },
+  titleGradient: {
+    fontSize: "2rem",
+    fontWeight: 800,
+    background: "linear-gradient(135deg, #fff 0%, #a5b4fc 50%, #06b6d4 100%)",
+    backgroundSize: "200% auto",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+    backgroundClip: "text",
+    animation: "shimmer 4s linear infinite",
+  },
   subtitle: {
-    fontSize: "0.95rem",
+    fontSize: "1rem",
     color: "rgba(255, 255, 255, 0.6)",
-    marginBottom: 32,
+    marginBottom: 35,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+  },
+  sparkle: {
+    animation: "sparkle 2s ease-in-out infinite",
+    display: "inline-block",
   },
   form: {
     display: "flex",
     flexDirection: "column",
-    gap: 20,
+    gap: 22,
   },
   field: {
     display: "flex",
@@ -307,68 +528,98 @@ const styles = {
   label: {
     display: "flex",
     alignItems: "center",
-    marginBottom: 10,
-    fontSize: "0.9rem",
+    marginBottom: 12,
+    fontSize: "0.95rem",
     fontWeight: 600,
-    color: "rgba(255, 255, 255, 0.8)",
+    color: "rgba(255, 255, 255, 0.85)",
+  },
+  labelIcon: {
+    marginRight: 10,
+    fontSize: "1.1rem",
   },
   inputWrapper: {
     position: "relative",
+    borderRadius: 14,
+    background: "rgba(255, 255, 255, 0.06)",
+    border: "2px solid rgba(255, 255, 255, 0.1)",
+    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+    overflow: "hidden",
+  },
+  inputWrapperFocused: {
+    borderColor: "#6366f1",
+    background: "rgba(99, 102, 241, 0.08)",
+    boxShadow: "0 0 20px rgba(99, 102, 241, 0.2)",
+  },
+  inputWrapperError: {
+    borderColor: "#ef4444",
+    background: "rgba(239, 68, 68, 0.08)",
   },
   input: {
     width: "100%",
-    padding: "14px 16px",
-    fontSize: "0.95rem",
-    borderRadius: 12,
-    border: "1px solid rgba(255, 255, 255, 0.15)",
-    background: "rgba(255, 255, 255, 0.08)",
+    padding: "16px 18px",
+    fontSize: "1rem",
+    border: "none",
+    background: "transparent",
     color: "white",
     outline: "none",
-    transition: "all 0.3s ease",
     boxSizing: "border-box",
+    fontFamily: "inherit",
   },
-  passwordWrapper: {
-    position: "relative",
-    display: "flex",
-    alignItems: "center",
-  },
-  passwordInput: {
-    paddingRight: 50,
+  inputGlow: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: "2px",
+    background: "linear-gradient(90deg, transparent, #6366f1, #8b5cf6, transparent)",
+    opacity: 0,
+    transition: "opacity 0.3s ease",
   },
   toggleBtn: {
     position: "absolute",
-    right: 12,
+    right: 14,
+    top: "50%",
+    transform: "translateY(-50%)",
     background: "transparent",
     border: "none",
-    color: "rgba(255, 255, 255, 0.5)",
+    fontSize: "1.2rem",
     cursor: "pointer",
     padding: 4,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    transition: "color 0.2s ease",
+    transition: "transform 0.2s ease",
   },
   submit: {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: 12,
     width: "100%",
-    padding: "15px",
-    marginTop: 8,
+    padding: "17px",
+    marginTop: 10,
     border: "none",
     background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-    borderRadius: 12,
-    fontSize: "1rem",
-    fontWeight: 600,
+    borderRadius: 14,
+    fontSize: "1.05rem",
+    fontWeight: 700,
     color: "white",
     cursor: "pointer",
-    boxShadow: "0 10px 30px rgba(99, 102, 241, 0.4)",
-    transition: "all 0.3s ease",
+    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+    fontFamily: "inherit",
+    position: "relative",
+    overflow: "hidden",
+  },
+  btnIcon: {
+    fontSize: "1.1rem",
+  },
+  btnArrow: {
+    fontSize: "1.2rem",
+    transition: "transform 0.3s ease",
   },
   spinner: {
-    width: 18,
-    height: 18,
+    width: 20,
+    height: 20,
     border: "2px solid rgba(255,255,255,0.3)",
     borderTopColor: "white",
     borderRadius: "50%",
@@ -377,46 +628,84 @@ const styles = {
   error: {
     display: "flex",
     alignItems: "center",
-    gap: 6,
-    marginTop: 8,
+    gap: 8,
+    marginTop: 10,
     color: "#f87171",
-    fontSize: "0.8rem",
+    fontSize: "0.85rem",
+  },
+  errorIcon: {
+    fontSize: "0.9rem",
   },
   errorBox: {
     display: "flex",
     alignItems: "center",
-    gap: 10,
-    padding: "12px 16px",
-    background: "rgba(239, 68, 68, 0.15)",
-    border: "1px solid rgba(239, 68, 68, 0.3)",
-    borderRadius: 10,
+    gap: 12,
+    padding: "14px 18px",
+    background: "rgba(239, 68, 68, 0.12)",
+    border: "1px solid rgba(239, 68, 68, 0.25)",
+    borderRadius: 12,
     color: "#f87171",
-    fontSize: "0.9rem",
+    fontSize: "0.95rem",
+  },
+  errorBoxIcon: {
+    fontSize: "1rem",
   },
   divider: {
     display: "flex",
     alignItems: "center",
     gap: 16,
-    margin: "28px 0 20px",
+    margin: "30px 0 22px",
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    background: "rgba(255, 255, 255, 0.15)",
+    background: "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)",
   },
   dividerText: {
-    fontSize: "0.85rem",
+    fontSize: "0.9rem",
     color: "rgba(255, 255, 255, 0.4)",
     fontWeight: 500,
   },
   linkText: {
-    fontSize: "0.9rem",
+    fontSize: "0.95rem",
     color: "rgba(255, 255, 255, 0.6)",
   },
   link: {
     color: "#a5b4fc",
     fontWeight: 600,
     textDecoration: "none",
-    transition: "color 0.2s ease",
+    transition: "all 0.3s ease",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+  },
+  linkHighlight: {
+    background: "linear-gradient(135deg, #a5b4fc, #06b6d4)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+    backgroundClip: "text",
+  },
+  linkIcon: {
+    fontSize: "0.9rem",
+    animation: "sparkle 2s ease-in-out infinite",
+  },
+  securityBadge: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    marginTop: "25px",
+    padding: "10px 16px",
+    background: "rgba(34, 197, 94, 0.1)",
+    border: "1px solid rgba(34, 197, 94, 0.2)",
+    borderRadius: "20px",
+  },
+  securityIcon: {
+    fontSize: "0.9rem",
+  },
+  securityText: {
+    fontSize: "0.8rem",
+    color: "rgba(34, 197, 94, 0.8)",
+    fontWeight: 500,
   },
 };

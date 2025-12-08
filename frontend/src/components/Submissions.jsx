@@ -1,13 +1,33 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 const API_BASE_URL = "http://localhost:8080";
 
 export default function Submissions() {
+  const navigate = useNavigate();
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expandedFeedback, setExpandedFeedback] = useState(null);
+
+  // Check if user is authenticated as student
+  useEffect(() => {
+    const isAuthenticated = localStorage.getItem('isAuthenticated');
+    const userRole = localStorage.getItem('userRole');
+    
+    if (!isAuthenticated || isAuthenticated !== 'true') {
+      navigate('/Login');
+      return;
+    }
+    
+    // Only students should access this page
+    if (userRole && userRole.toLowerCase() !== 'student') {
+      alert('This page is only for Students.');
+      navigate('/');
+      return;
+    }
+  }, [navigate]);
 
   useEffect(() => {
     fetchSubmissions();
@@ -18,11 +38,17 @@ export default function Submissions() {
       const response = await axios.get(`${API_BASE_URL}/student/mysubmissions`, {
         withCredentials: true,
       });
-      setSubmissions(response.data);
+      setSubmissions(response.data || []);
       setLoading(false);
+      setError("");
     } catch (err) {
       console.error("Error fetching submissions:", err);
-      setError("Failed to fetch submissions. Please try again.");
+      // Check if it's an authentication error
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setError("Please login as a student to view submissions.");
+      } else {
+        setError(err.response?.data?.message || "Failed to fetch submissions. Please try again.");
+      }
       setLoading(false);
     }
   };
@@ -71,21 +97,26 @@ export default function Submissions() {
   const getDocTypeLabel = (docType) => {
     const labels = {
       'proposal': 'Proposal',
+      'Proposal': 'Proposal',
       'design_document': 'Design Document',
+      'Design Document': 'Design Document',
       'test_document': 'Test Document',
+      'Test Document': 'Test Document',
       'thesis': 'Thesis',
+      'Thesis': 'Thesis',
     };
     return labels[docType] || docType;
   };
 
   const getDocTypeColor = (docType) => {
+    const normalizedType = docType?.toLowerCase?.().replace(/\s+/g, '_') || '';
     const colors = {
       'proposal': { bg: 'linear-gradient(135deg, #6366f1, #8b5cf6)', shadow: 'rgba(99, 102, 241, 0.4)' },
       'design_document': { bg: 'linear-gradient(135deg, #ec4899, #f97316)', shadow: 'rgba(236, 72, 153, 0.4)' },
       'test_document': { bg: 'linear-gradient(135deg, #14b8a6, #06b6d4)', shadow: 'rgba(20, 184, 166, 0.4)' },
       'thesis': { bg: 'linear-gradient(135deg, #f59e0b, #eab308)', shadow: 'rgba(245, 158, 11, 0.4)' },
     };
-    return colors[docType] || { bg: 'linear-gradient(135deg, #6366f1, #8b5cf6)', shadow: 'rgba(99, 102, 241, 0.4)' };
+    return colors[normalizedType] || { bg: 'linear-gradient(135deg, #6366f1, #8b5cf6)', shadow: 'rgba(99, 102, 241, 0.4)' };
   };
 
   if (loading) {

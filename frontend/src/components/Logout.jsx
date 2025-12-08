@@ -1,80 +1,24 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-
-const API_BASE_URL = "http://localhost:8080";
 
 export default function Logout() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState("Checking session...");
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [isAlreadyLoggedOut, setIsAlreadyLoggedOut] = useState(false);
+  const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
-    const performLogout = async () => {
-      const isAuthenticated = localStorage.getItem("isAuthenticated");
-      
-      if (!isAuthenticated || isAuthenticated !== "true") {
-        setIsAlreadyLoggedOut(true);
-        setStatus("You are already logged out!");
-        
-        localStorage.removeItem("isAuthenticated");
-        localStorage.removeItem("userId");
-        localStorage.removeItem("userRole");
-        return;
-      }
-
-      try {
-        await axios.get(`${API_BASE_URL}/student/status`, {
-          withCredentials: true,
-        });
-
-        setStatus("Logging out...");
-        
-        try {
-          await axios.post(
-            `${API_BASE_URL}/auth/logout`,
-            {},
-            {
-              withCredentials: true,
-            }
-          );
-        } catch (logoutErr) {}
-
-        localStorage.removeItem("isAuthenticated");
-        localStorage.removeItem("userId");
-        localStorage.removeItem("userRole");
-
-        setIsSuccess(true);
-        setStatus("Logged out successfully!");
-
-        setTimeout(() => {
+    // Start countdown for redirect
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
           navigate("/");
-        }, 2000);
-      } catch (error) {
-        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-          setIsAlreadyLoggedOut(true);
-          setStatus("You are already logged out!");
-          
-          localStorage.removeItem("isAuthenticated");
-          localStorage.removeItem("userId");
-          localStorage.removeItem("userRole");
-        } else {
-          localStorage.removeItem("isAuthenticated");
-          localStorage.removeItem("userId");
-          localStorage.removeItem("userRole");
-
-          setIsSuccess(true);
-          setStatus("Logged out successfully!");
-
-          setTimeout(() => {
-            navigate("/");
-          }, 2000);
+          return 0;
         }
-      }
-    };
+        return prev - 1;
+      });
+    }, 1000);
 
-    performLogout();
+    return () => clearInterval(timer);
   }, [navigate]);
 
   return (
@@ -86,90 +30,49 @@ export default function Logout() {
       <div style={styles.card}>
         <div style={{
           ...styles.iconWrapper,
-          background: isSuccess 
-            ? 'linear-gradient(135deg, #10b981, #34d399)' 
-            : isAlreadyLoggedOut
-            ? 'linear-gradient(135deg, #f59e0b, #fbbf24)'
-            : 'linear-gradient(135deg, #6366f1, #8b5cf6)'
+          background: 'linear-gradient(135deg, #10b981, #34d399)'
         }}>
-          {isSuccess ? (
-            <svg viewBox="0 0 24 24" width="40" height="40" fill="white">
-              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-            </svg>
-          ) : isAlreadyLoggedOut ? (
-            <svg viewBox="0 0 24 24" width="40" height="40" fill="white">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-            </svg>
-          ) : (
-            <svg viewBox="0 0 24 24" width="40" height="40" fill="white">
-              <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" />
-            </svg>
-          )}
+          <svg viewBox="0 0 24 24" width="40" height="40" fill="white">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+          </svg>
         </div>
 
-        <h2 style={styles.title}>{status}</h2>
+        <h2 style={styles.title}>Logged out successfully!</h2>
         <p style={styles.subtitle}>
-          {isSuccess 
-            ? "Redirecting you to home page..." 
-            : isAlreadyLoggedOut 
-            ? "Please login first to access the system."
-            : "Please wait a moment..."}
+          Redirecting to home page in {countdown} second{countdown !== 1 ? 's' : ''}...
         </p>
 
-        {!isAlreadyLoggedOut && (
-          <div style={styles.progressContainer}>
-            <div style={{
-              ...styles.progressBar,
-              animation: 'progressAnimation 2s ease-in-out forwards'
-            }}></div>
-          </div>
-        )}
+        <div style={styles.progressContainer}>
+          <div style={{
+            ...styles.progressBar,
+            animation: 'progressAnimation 3s linear forwards'
+          }}></div>
+        </div>
 
-        {isAlreadyLoggedOut && (
-          <div style={styles.buttonContainer}>
-            <button 
-              style={styles.loginBtn}
-              onClick={() => navigate('/Login')}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-            >
-              Go to Login
-            </button>
-            <button 
-              style={styles.homeBtn}
-              onClick={() => navigate('/')}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(99, 102, 241, 0.1)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              Back to Home
-            </button>
-          </div>
-        )}
-
-        {!isAlreadyLoggedOut && (
-          <div style={styles.dotsContainer}>
-            <span style={{...styles.dot, animationDelay: '0s'}}></span>
-            <span style={{...styles.dot, animationDelay: '0.2s'}}></span>
-            <span style={{...styles.dot, animationDelay: '0.4s'}}></span>
-          </div>
-        )}
+        <div style={styles.buttonContainer}>
+          <button 
+            style={styles.loginBtn}
+            onClick={() => navigate('/Login')}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+          >
+            Login Again
+          </button>
+          <button 
+            style={styles.homeBtn}
+            onClick={() => navigate('/')}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(99, 102, 241, 0.1)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+          >
+            Go to Home Now
+          </button>
+        </div>
       </div>
 
       <style>{`
         @keyframes progressAnimation {
           0% { width: 0%; }
           100% { width: 100%; }
-        }
-        
-        @keyframes bounce {
-          0%, 80%, 100% { 
-            transform: scale(0.6);
-            opacity: 0.4;
-          }
-          40% { 
-            transform: scale(1);
-            opacity: 1;
-          }
         }
         
         @keyframes float {
@@ -204,7 +107,7 @@ const styles = {
     width: "400px",
     height: "400px",
     borderRadius: "50%",
-    background: "radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%)",
+    background: "radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, transparent 70%)",
     animation: "float 6s ease-in-out infinite",
   },
   bgDecor2: {
@@ -214,7 +117,7 @@ const styles = {
     width: "500px",
     height: "500px",
     borderRadius: "50%",
-    background: "radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, transparent 70%)",
+    background: "radial-gradient(circle, rgba(52, 211, 153, 0.25) 0%, transparent 70%)",
     animation: "float 8s ease-in-out infinite reverse",
   },
   bgDecor3: {
@@ -233,7 +136,7 @@ const styles = {
     borderRadius: "28px",
     padding: "50px 60px",
     textAlign: "center",
-    boxShadow: "0 25px 80px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(99, 102, 241, 0.2)",
+    boxShadow: "0 25px 80px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(16, 185, 129, 0.2)",
     border: "1px solid rgba(255, 255, 255, 0.2)",
     position: "relative",
     zIndex: 10,
@@ -247,7 +150,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     margin: "0 auto 28px",
-    boxShadow: "0 15px 35px rgba(99, 102, 241, 0.4)",
+    boxShadow: "0 15px 35px rgba(16, 185, 129, 0.4)",
     transition: "all 0.5s ease",
   },
   title: {
@@ -273,22 +176,9 @@ const styles = {
   },
   progressBar: {
     height: "100%",
-    background: "linear-gradient(90deg, #6366f1, #8b5cf6, #06b6d4)",
+    background: "linear-gradient(90deg, #10b981, #34d399, #06b6d4)",
     borderRadius: "100px",
     width: "0%",
-  },
-  dotsContainer: {
-    display: "flex",
-    justifyContent: "center",
-    gap: "8px",
-  },
-  dot: {
-    width: "10px",
-    height: "10px",
-    borderRadius: "50%",
-    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-    animation: "bounce 1.4s ease-in-out infinite",
-    display: "inline-block",
   },
   buttonContainer: {
     display: "flex",

@@ -1,40 +1,37 @@
 import React, { useState } from "react";
-import PropTypes from "prop-types";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 const API_BASE_URL = "http://localhost:8080";
 
-export default function FacLogin({ initialUserId = "FAC-1", userType = "faculty" }) {
+export default function AdminLogin() {
     const navigate = useNavigate();
-    const [userId, setUserId] = useState("");
+    const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-    const [touched, setTouched] = useState({ userId: false, password: false });
+    const [touched, setTouched] = useState({ username: false, password: false });
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const [focusedField, setFocusedField] = useState(null);
     const [hoveredBtn, setHoveredBtn] = useState(false);
 
-    const idPrefix = userType === "student" ? "STU" : "FAC";
-    const idRegex = new RegExp(`^${idPrefix}-\\d+$`, "i");
-    const userIdIsValid = idRegex.test(userId.trim().toUpperCase());
-    const passwordIsValid = password.length >= 6;
+    const usernameIsValid = username.trim().length >= 3;
+    const passwordIsValid = password.length >= 4;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setTouched({ userId: true, password: true });
+        setTouched({ username: true, password: true });
         setErrorMessage("");
 
-        if (!userIdIsValid || !passwordIsValid) return;
+        if (!usernameIsValid || !passwordIsValid) return;
 
         setLoading(true);
 
         try {
             const response = await axios.post(
-                `${API_BASE_URL}/auth/login`,
+                `${API_BASE_URL}/auth/admin/login`,
                 {
-                    id: userId.trim().toUpperCase(),
+                    username: username.trim(),
                     password: password,
                 },
                 {
@@ -43,31 +40,21 @@ export default function FacLogin({ initialUserId = "FAC-1", userType = "faculty"
                 }
             );
 
-            const { role, message } = response.data;
+            const { role, message, adminId, username: adminUsername } = response.data;
+            
+            // Store admin info in localStorage
             localStorage.setItem("isAuthenticated", "true");
-            localStorage.setItem("userId", userId.trim().toUpperCase());
+            localStorage.setItem("userId", adminId);
             localStorage.setItem("userRole", role);
+            localStorage.setItem("adminUsername", adminUsername);
             
             window.dispatchEvent(new Event("loginStatusChanged"));
             
-            console.log("Faculty login successful:", message, "Role:", role);
+            console.log("Admin login successful:", message);
             
-            // Redirect based on role/status
-            const roleLower = role ? role.toLowerCase() : '';
-            if (roleLower === 'student') {
-                navigate("/Dashboard1");
-            } else if (roleLower === 'faculty' || roleLower === 'supervisor') {
-                navigate("/Dashboard2");
-            } else if (roleLower === 'evaluation committee member') {
-                navigate("/Dashboard3");
-            } else if (roleLower === 'fyp committee member') {
-                navigate("/Dashboard4");
-            } else if (roleLower === 'admin') {
-                navigate("/Dashboard5");
-            } else {
-                // Default to faculty dashboard
-                navigate("/Dashboard2");
-            }
+            // Navigate to admin dashboard (Dashboard5 - FYP Committee)
+            navigate("/Dashboard5");
+            
         } catch (error) {
             if (error.response) {
                 setErrorMessage(error.response.data.message || "Invalid credentials. Please try again.");
@@ -116,59 +103,59 @@ export default function FacLogin({ initialUserId = "FAC-1", userType = "faculty"
                         <div style={styles.iconRing}></div>
                         <div style={styles.iconWrapper}>
                             <svg viewBox="0 0 24 24" width="32" height="32" fill="white">
-                                <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/>
+                                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
                             </svg>
                         </div>
                     </div>
 
                     <h2 style={styles.title}>
-                        <span style={styles.titleGradient}>Faculty Portal</span>
+                        <span style={styles.titleGradient}>Admin Portal</span>
                     </h2>
                     <p style={styles.subtitle}>
-                        <span style={styles.sparkle}>🎓</span>
-                        Sign in to manage your students
+                        <span style={styles.sparkle}>🛡️</span>
+                        Secure system administration access
                     </p>
 
                     <form onSubmit={handleSubmit} style={styles.form} noValidate>
                         <div style={styles.field}>
-                            <label htmlFor="userId" style={styles.label}>
-                                <span style={styles.labelIcon}>👨‍🏫</span>
-                                Faculty ID
+                            <label htmlFor="username" style={styles.label}>
+                                <span style={styles.labelIcon}>👤</span>
+                                Username
                             </label>
                             <div style={{
                                 ...styles.inputWrapper,
-                                ...(focusedField === 'userId' ? styles.inputWrapperFocused : {}),
-                                ...(touched.userId && !userIdIsValid ? styles.inputWrapperError : {}),
+                                ...(focusedField === 'username' ? styles.inputWrapperFocused : {}),
+                                ...(touched.username && !usernameIsValid ? styles.inputWrapperError : {}),
                             }}>
                                 <input
-                                    id="userId"
-                                    name="userId"
+                                    id="username"
+                                    name="username"
                                     type="text"
-                                    value={userId}
-                                    onChange={(e) => setUserId(e.target.value)}
-                                    onFocus={() => setFocusedField('userId')}
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    onFocus={() => setFocusedField('username')}
                                     onBlur={() => {
                                         setFocusedField(null);
-                                        setTouched((t) => ({ ...t, userId: true }));
+                                        setTouched((t) => ({ ...t, username: true }));
                                     }}
                                     style={styles.input}
                                     required
                                     autoComplete="username"
-                                    placeholder="FAC-01"
+                                    placeholder="Enter your username"
                                 />
                                 <div style={styles.inputGlow}></div>
                             </div>
-                            {touched.userId && !userIdIsValid && (
+                            {touched.username && !usernameIsValid && (
                                 <div style={styles.error}>
                                     <span style={styles.errorIcon}>⚠️</span>
-                                    Faculty ID must match FAC-N format (e.g. FAC-1)
+                                    Username must be at least 3 characters
                                 </div>
                             )}
                         </div>
 
                         <div style={styles.field}>
                             <label htmlFor="password" style={styles.label}>
-                                <span style={styles.labelIcon}>🔒</span>
+                                <span style={styles.labelIcon}>🔐</span>
                                 Password
                             </label>
                             <div style={{
@@ -205,7 +192,7 @@ export default function FacLogin({ initialUserId = "FAC-1", userType = "faculty"
                             {touched.password && !passwordIsValid && (
                                 <div style={styles.error}>
                                     <span style={styles.errorIcon}>⚠️</span>
-                                    Password must be at least 6 characters
+                                    Password must be at least 4 characters
                                 </div>
                             )}
                         </div>
@@ -219,30 +206,30 @@ export default function FacLogin({ initialUserId = "FAC-1", userType = "faculty"
 
                         <button
                             type="submit"
-                            disabled={!userIdIsValid || !passwordIsValid || loading}
+                            disabled={!usernameIsValid || !passwordIsValid || loading}
                             onMouseEnter={() => setHoveredBtn(true)}
                             onMouseLeave={() => setHoveredBtn(false)}
                             style={{
                                 ...styles.submit,
-                                opacity: !userIdIsValid || !passwordIsValid || loading ? 0.6 : 1,
-                                cursor: !userIdIsValid || !passwordIsValid || loading ? "not-allowed" : "pointer",
-                                transform: hoveredBtn && userIdIsValid && passwordIsValid && !loading 
+                                opacity: !usernameIsValid || !passwordIsValid || loading ? 0.6 : 1,
+                                cursor: !usernameIsValid || !passwordIsValid || loading ? "not-allowed" : "pointer",
+                                transform: hoveredBtn && usernameIsValid && passwordIsValid && !loading 
                                     ? 'translateY(-3px) scale(1.02)' 
                                     : 'translateY(0)',
-                                boxShadow: hoveredBtn && userIdIsValid && passwordIsValid && !loading
-                                    ? '0 20px 40px rgba(16,185,129,0.5), 0 0 0 3px rgba(16,185,129,0.2)'
-                                    : '0 10px 30px rgba(16, 185, 129, 0.4)',
+                                boxShadow: hoveredBtn && usernameIsValid && passwordIsValid && !loading
+                                    ? '0 20px 40px rgba(239,68,68,0.5), 0 0 0 3px rgba(239,68,68,0.2)'
+                                    : '0 10px 30px rgba(239, 68, 68, 0.4)',
                             }}
                         >
                             {loading ? (
                                 <>
                                     <span style={styles.spinner}></span>
-                                    Signing in...
+                                    Authenticating...
                                 </>
                             ) : (
                                 <>
-                                    <span style={styles.btnIcon}>📚</span>
-                                    Sign In
+                                    <span style={styles.btnIcon}>⚡</span>
+                                    Access Dashboard
                                     <span style={styles.btnArrow}>→</span>
                                 </>
                             )}
@@ -251,22 +238,21 @@ export default function FacLogin({ initialUserId = "FAC-1", userType = "faculty"
 
                     <div style={styles.divider}>
                         <span style={styles.dividerLine}></span>
-                        <span style={styles.dividerText}>or</span>
+                        <span style={styles.dividerText}>🔒 Admin Access Only</span>
                         <span style={styles.dividerLine}></span>
                     </div>
 
-                    <p style={styles.linkText}>
-                        Don't have an account?{" "}
-                        <Link to="/faculty-signup" style={styles.link}>
-                            <span style={styles.linkHighlight}>Create Account</span>
-                            <span style={styles.linkIcon}>✨</span>
-                        </Link>
-                    </p>
+                    <div style={styles.infoBox}>
+                        <span style={styles.infoIcon}>ℹ️</span>
+                        <span style={styles.infoText}>
+                            Contact system administrator if you need access
+                        </span>
+                    </div>
 
                     {/* Security badge */}
                     <div style={styles.securityBadge}>
-                        <span style={styles.securityIcon}>🔐</span>
-                        <span style={styles.securityText}>Faculty-only secure portal</span>
+                        <span style={styles.securityIcon}>🛡️</span>
+                        <span style={styles.securityText}>Protected by advanced security</span>
                     </div>
                 </div>
             </div>
@@ -319,8 +305,8 @@ export default function FacLogin({ initialUserId = "FAC-1", userType = "faculty"
                 }
                 
                 @keyframes glow {
-                    0%, 100% { box-shadow: 0 0 30px rgba(16, 185, 129, 0.3); }
-                    50% { box-shadow: 0 0 50px rgba(6, 182, 212, 0.5); }
+                    0%, 100% { box-shadow: 0 0 30px rgba(239, 68, 68, 0.3); }
+                    50% { box-shadow: 0 0 50px rgba(168, 85, 247, 0.5); }
                 }
                 
                 @keyframes sparkle {
@@ -344,11 +330,6 @@ export default function FacLogin({ initialUserId = "FAC-1", userType = "faculty"
     );
 }
 
-FacLogin.propTypes = {
-    initialUserId: PropTypes.string,
-    userType: PropTypes.oneOf(["student", "faculty"]),
-};
-
 const styles = {
     container: {
         width: "100%",
@@ -356,7 +337,7 @@ const styles = {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "linear-gradient(135deg, #0a0a1a 0%, #0d2818 40%, #0f172a 100%)",
+        background: "linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 40%, #0f172a 100%)",
         padding: 20,
         position: "relative",
         overflow: "hidden",
@@ -377,7 +358,7 @@ const styles = {
         width: "500px",
         height: "500px",
         borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(16,185,129,0.3), transparent 60%)",
+        background: "radial-gradient(circle, rgba(239,68,68,0.3), transparent 60%)",
         animation: "float 8s ease-in-out infinite",
         filter: "blur(40px)",
     },
@@ -388,7 +369,7 @@ const styles = {
         width: "550px",
         height: "550px",
         borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(6,182,212,0.25), transparent 60%)",
+        background: "radial-gradient(circle, rgba(168,85,247,0.25), transparent 60%)",
         animation: "float 10s ease-in-out infinite reverse",
         filter: "blur(50px)",
     },
@@ -399,7 +380,7 @@ const styles = {
         width: "400px",
         height: "400px",
         borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(245,158,11,0.15), transparent 60%)",
+        background: "radial-gradient(circle, rgba(251,191,36,0.15), transparent 60%)",
         animation: "float 7s ease-in-out infinite",
         filter: "blur(35px)",
         transform: "translate(-50%, -50%)",
@@ -428,8 +409,8 @@ const styles = {
         width: "6px",
         height: "6px",
         borderRadius: "50%",
-        background: "linear-gradient(135deg, #10b981, #06b6d4)",
-        boxShadow: "0 0 10px rgba(16, 185, 129, 0.5)",
+        background: "linear-gradient(135deg, #ef4444, #a855f7)",
+        boxShadow: "0 0 10px rgba(239, 68, 68, 0.5)",
     },
     card: {
         width: "100%",
@@ -450,7 +431,7 @@ const styles = {
         right: "-2px",
         bottom: "-2px",
         borderRadius: 30,
-        background: "linear-gradient(135deg, rgba(16,185,129,0.3), rgba(6,182,212,0.2), rgba(245,158,11,0.3))",
+        background: "linear-gradient(135deg, rgba(239,68,68,0.3), rgba(168,85,247,0.2), rgba(251,191,36,0.3))",
         filter: "blur(15px)",
         zIndex: -1,
         animation: "glow 4s ease-in-out infinite",
@@ -472,7 +453,7 @@ const styles = {
         width: "100%",
         height: "100%",
         borderRadius: "50%",
-        border: "2px dashed rgba(16, 185, 129, 0.4)",
+        border: "2px dashed rgba(239, 68, 68, 0.4)",
         animation: "ringRotate 10s linear infinite",
     },
     iconWrapper: {
@@ -483,11 +464,11 @@ const styles = {
         width: 75,
         height: 75,
         borderRadius: 22,
-        background: "linear-gradient(135deg, #10b981, #059669, #06b6d4)",
+        background: "linear-gradient(135deg, #ef4444, #dc2626, #a855f7)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        boxShadow: "0 15px 40px rgba(16, 185, 129, 0.5)",
+        boxShadow: "0 15px 40px rgba(239, 68, 68, 0.5)",
     },
     title: {
         marginBottom: 8,
@@ -495,7 +476,7 @@ const styles = {
     titleGradient: {
         fontSize: "2rem",
         fontWeight: 800,
-        background: "linear-gradient(135deg, #fff 0%, #6ee7b7 50%, #06b6d4 100%)",
+        background: "linear-gradient(135deg, #fff 0%, #fca5a5 50%, #c4b5fd 100%)",
         backgroundSize: "200% auto",
         WebkitBackgroundClip: "text",
         WebkitTextFillColor: "transparent",
@@ -546,9 +527,9 @@ const styles = {
         overflow: "hidden",
     },
     inputWrapperFocused: {
-        borderColor: "#10b981",
-        background: "rgba(16, 185, 129, 0.08)",
-        boxShadow: "0 0 20px rgba(16, 185, 129, 0.2)",
+        borderColor: "#ef4444",
+        background: "rgba(239, 68, 68, 0.08)",
+        boxShadow: "0 0 20px rgba(239, 68, 68, 0.2)",
     },
     inputWrapperError: {
         borderColor: "#ef4444",
@@ -571,7 +552,7 @@ const styles = {
         left: 0,
         right: 0,
         height: "2px",
-        background: "linear-gradient(90deg, transparent, #10b981, #06b6d4, transparent)",
+        background: "linear-gradient(90deg, transparent, #ef4444, #a855f7, transparent)",
         opacity: 0,
         transition: "opacity 0.3s ease",
     },
@@ -599,7 +580,7 @@ const styles = {
         padding: "17px",
         marginTop: 10,
         border: "none",
-        background: "linear-gradient(135deg, #10b981, #059669)",
+        background: "linear-gradient(135deg, #ef4444, #dc2626)",
         borderRadius: 14,
         fontSize: "1.05rem",
         fontWeight: 700,
@@ -663,41 +644,36 @@ const styles = {
     },
     dividerText: {
         fontSize: "0.9rem",
-        color: "rgba(255, 255, 255, 0.4)",
+        color: "rgba(255, 255, 255, 0.5)",
         fontWeight: 500,
     },
-    linkText: {
-        fontSize: "0.95rem",
-        color: "rgba(255, 255, 255, 0.6)",
-    },
-    link: {
-        color: "#6ee7b7",
-        fontWeight: 600,
-        textDecoration: "none",
-        transition: "all 0.3s ease",
-        display: "inline-flex",
+    infoBox: {
+        display: "flex",
         alignItems: "center",
-        gap: "6px",
+        justifyContent: "center",
+        gap: "10px",
+        padding: "12px 16px",
+        background: "rgba(168, 85, 247, 0.1)",
+        border: "1px solid rgba(168, 85, 247, 0.2)",
+        borderRadius: "12px",
+        marginBottom: "15px",
     },
-    linkHighlight: {
-        background: "linear-gradient(135deg, #6ee7b7, #06b6d4)",
-        WebkitBackgroundClip: "text",
-        WebkitTextFillColor: "transparent",
-        backgroundClip: "text",
+    infoIcon: {
+        fontSize: "1rem",
     },
-    linkIcon: {
-        fontSize: "0.9rem",
-        animation: "sparkle 2s ease-in-out infinite",
+    infoText: {
+        fontSize: "0.85rem",
+        color: "rgba(255, 255, 255, 0.6)",
     },
     securityBadge: {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         gap: "8px",
-        marginTop: "25px",
+        marginTop: "10px",
         padding: "10px 16px",
-        background: "rgba(16, 185, 129, 0.1)",
-        border: "1px solid rgba(16, 185, 129, 0.2)",
+        background: "rgba(239, 68, 68, 0.1)",
+        border: "1px solid rgba(239, 68, 68, 0.2)",
         borderRadius: "20px",
     },
     securityIcon: {
@@ -705,7 +681,7 @@ const styles = {
     },
     securityText: {
         fontSize: "0.8rem",
-        color: "rgba(16, 185, 129, 0.8)",
+        color: "rgba(239, 68, 68, 0.8)",
         fontWeight: 500,
     },
 };

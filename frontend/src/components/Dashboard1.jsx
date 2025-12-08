@@ -11,9 +11,11 @@ export default function Dashboard1() {
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
-    graded: 0,
+    graded: false,
   });
   const [loading, setLoading] = useState(true);
+  const [deadlines, setDeadlines] = useState([]);
+  const [finalGrade, setFinalGrade] = useState(null);
 
   useEffect(() => {
     const updateGreeting = () => {
@@ -37,22 +39,97 @@ export default function Dashboard1() {
         const response = await axios.get(`${API_BASE_URL}/student/mysubmissions`, {
           withCredentials: true,
         });
-        const submissions = response.data || [];
+        const rawData = response.data || [];
+        console.log('Dashboard1 - Raw Data:', rawData);
+        
+        // API returns { submission: {...}, feedbacks: [...] } objects
+        // Extract the actual submission objects
+        const submissions = rawData.map(item => item.submission || item);
+        
+        console.log('Dashboard1 - Extracted Submissions:', submissions);
+        
         const total = submissions.length;
-        const graded = submissions.filter(s => s.grade !== null && s.grade !== undefined && s.grade !== '').length;
-        const pending = total - graded;
-        setStats({ total, pending, graded });
+        
+        // Count approved submissions
+        const approved = submissions.filter(s => {
+          const val = s.is_approved;
+          // If value is explicitly false, 0, "0", "false", null, undefined => not approved
+          if (val === false || val === 0 || val === "0" || val === "false" || val === null || val === undefined) {
+            return false;
+          }
+          return true;
+        }).length;
+        
+        // Pending = not approved yet
+        const pending = total - approved;
+        
+        setStats(prev => ({ ...prev, total, pending }));
       } catch (error) {
         console.error('Error fetching submissions:', error);
-        setStats({ total: 0, pending: 0, graded: 0 });
+        setStats(prev => ({ ...prev, total: 0, pending: 0 }));
       } finally {
         setLoading(false);
+      }
+    };
+
+    // Fetch grade status from the grades endpoint
+    const fetchGradeStatus = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/student/mygrades`, {
+          withCredentials: true,
+        });
+        // If we get a response, grades have been released and student has a grade
+        if (response.data && response.data.grade) {
+          setStats(prev => ({ ...prev, graded: true }));
+          setFinalGrade(response.data.grade);
+        }
+      } catch (error) {
+        // Grades not released yet or no grade assigned - this is expected
+        console.log('Grades not available:', error.response?.data || error.message);
+        setStats(prev => ({ ...prev, graded: false }));
+        setFinalGrade(null);
+      }
+    };
+
+    const fetchDeadlines = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/student/deadlines`, {
+          withCredentials: true,
+        });
+        const deadlineData = response.data || [];
+        
+        // Remove duplicates based on doc_type (keep only one per type)
+        const uniqueDeadlines = deadlineData.reduce((acc, current) => {
+          const exists = acc.find(item => item.doc_type === current.doc_type);
+          if (!exists) {
+            acc.push(current);
+          }
+          return acc;
+        }, []);
+        
+        // Map to friendly names
+        const deadlineMap = {
+          'Proposal': { name: 'Proposal', icon: '📄' },
+          'Design Document': { name: 'Design Document', icon: '📐' },
+          'Test Document': { name: 'Test Document', icon: '🧪' },
+          'Thesis': { name: 'Thesis', icon: '📚' }
+        };
+        const formattedDeadlines = uniqueDeadlines.map(d => ({
+          ...d,
+          displayName: deadlineMap[d.doc_type]?.name || d.doc_type,
+          icon: deadlineMap[d.doc_type]?.icon || '📄'
+        }));
+        setDeadlines(formattedDeadlines);
+      } catch (error) {
+        console.error('Error fetching deadlines:', error);
       }
     };
 
     updateGreeting();
     updateTime();
     fetchSubmissions();
+    fetchDeadlines();
+    fetchGradeStatus();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -62,7 +139,7 @@ export default function Dashboard1() {
   const statsData = [
     { label: 'Documents', value: loading ? '...' : stats.total.toString(), icon: '📄', color: '#6366f1' },
     { label: 'Pending', value: loading ? '...' : stats.pending.toString(), icon: '⏳', color: '#f59e0b' },
-    { label: 'Graded', value: loading ? '...' : stats.graded.toString(), icon: '✅', color: '#10b981' },
+    { label: 'Final Grade', value: loading ? '...' : (stats.graded ? finalGrade : 'Not Released'), icon: stats.graded ? '🎓' : '🔒', color: stats.graded ? '#10b981' : '#6b7280' },
   ];
 
   const quickActions = [
@@ -149,6 +226,65 @@ export default function Dashboard1() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Deadlines Section */}
+        <div style={styles.sectionHeader}>
+          <h3 style={styles.sectionTitle}>
+            <span style={styles.sectionIcon}>📅</span>
+            Upcoming Deadlines
+          </h3>
+          <p style={styles.sectionSubtitle}>Keep track of your document submission deadlines</p>
+        </div>
+
+        <div style={styles.deadlinesGrid}>
+          {deadlines.length > 0 ? (
+            deadlines.map((deadline, index) => {
+              const deadlineDate = deadline.deadline_date ? new Date(deadline.deadline_date) : null;
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const daysLeft = deadlineDate ? Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24)) : null;
+              
+              let statusColor = '#10b981'; // green
+              let statusText = 'On Track';
+              if (daysLeft !== null) {
+                if (daysLeft < 0) {
+                  statusColor = '#ef4444'; // red
+                  statusText = 'Overdue';
+                } else if (daysLeft <= 7) {
+                  statusColor = '#f59e0b'; // orange
+                  statusText = 'Due Soon';
+                }
+              }
+              
+              return (
+                <div key={index} style={styles.deadlineCard}>
+                  <div style={styles.deadlineIcon}>{deadline.icon}</div>
+                  <div style={styles.deadlineInfo}>
+                    <h4 style={styles.deadlineName}>{deadline.displayName}</h4>
+                    <p style={styles.deadlineDate}>
+                      {deadlineDate ? deadlineDate.toLocaleDateString('en-US', { 
+                        weekday: 'short',
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      }) : 'Not Set'}
+                    </p>
+                  </div>
+                  <div style={styles.deadlineStatus}>
+                    <span style={{...styles.statusBadge, background: `${statusColor}20`, color: statusColor}}>
+                      {daysLeft !== null ? (daysLeft < 0 ? `${Math.abs(daysLeft)} days ago` : daysLeft === 0 ? 'Today' : `${daysLeft} days left`) : statusText}
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div style={styles.noDeadlines}>
+              <span style={styles.noDeadlinesIcon}>📭</span>
+              <p style={styles.noDeadlinesText}>No deadlines set yet</p>
+            </div>
+          )}
         </div>
 
         {/* Quick Actions Section */}
@@ -510,6 +646,79 @@ const styles = {
     fontSize: '0.9rem',
     color: 'rgba(255, 255, 255, 0.7)',
     lineHeight: 1.7,
+    margin: 0,
+  },
+  deadlinesGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gap: '16px',
+    marginBottom: '40px',
+  },
+  deadlineCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    background: 'rgba(255, 255, 255, 0.05)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: '16px',
+    padding: '20px',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    transition: 'all 300ms ease',
+  },
+  deadlineIcon: {
+    fontSize: '2rem',
+    width: '50px',
+    height: '50px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(99, 102, 241, 0.2)',
+    borderRadius: '12px',
+    flexShrink: 0,
+  },
+  deadlineInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  deadlineName: {
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: 'white',
+    margin: '0 0 4px',
+  },
+  deadlineDate: {
+    fontSize: '0.85rem',
+    color: 'rgba(255, 255, 255, 0.6)',
+    margin: 0,
+  },
+  deadlineStatus: {
+    flexShrink: 0,
+  },
+  statusBadge: {
+    padding: '6px 12px',
+    borderRadius: '20px',
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+  },
+  noDeadlines: {
+    gridColumn: '1 / -1',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '40px',
+    background: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: '16px',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+  },
+  noDeadlinesIcon: {
+    fontSize: '3rem',
+    marginBottom: '12px',
+  },
+  noDeadlinesText: {
+    fontSize: '1rem',
+    color: 'rgba(255, 255, 255, 0.5)',
     margin: 0,
   },
 };
